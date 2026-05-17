@@ -1,138 +1,140 @@
-// Inicializa o servidor Express, configura rotas de tarefas e conecta ao banco de dados
+// Servidor principal do backend - gerencia todas as rotas da API de tarefas
 import express from 'express';
 import cors from 'cors';
-import pool, { connectDB } from './db/pool.js';
+import 'dotenv/config';
+import pool, { connectDB } from './pool.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ─── Middlewares ───────────────────────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
-app.use('/tasks', taskRoutes);
 
-// 1. READ ALL (Listar)
-app.get('/tasks', async (_req, res) => {
+// ─── Conexão com banco ─────────────────────────────────────────────────────────
+await connectDB();
+
+// ─── Rotas de Tarefas ──────────────────────────────────────────────────────────
+
+// GET /tasks → lista todas as tarefas
+app.get('/tasks', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM tarefas ORDER BY data_entrega ASC');
+    const result = await pool.query('SELECT * FROM tarefas ORDER BY created_at DESC');
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[GET /tasks]', err.message);
+    res.status(500).json({ error: 'Erro ao buscar tarefas' });
   }
 });
 
-app.get('/report', async (req, res) => {
-    try {
-        // A Lambda consome a própria API via HTTP para gerar as estatísticas
-        const response = await fetch(`http://localhost:${PORT}/tasks`);
-        const tasks = await response.json();
-        
-        const total = tasks.length;
-        const concluidas = tasks.filter(t => t.concluida || t.status === 'concluida').length;
-        const pendentes = total - concluidas;
-
-        res.json({
-            totalTarefas: total,
-            tarefasConcluidas: concluidas,
-            tarefasPendentes: pendentes,
-            emuladoPor: "AWS Lambda Function",
-            atualizadoEm: new Date().toISOString()
-        });
-    } catch (error) {
-        res.status(500).json({ error: "Erro ao emular cálculo da Lambda" });
-    }
-});
-
-app.listen(PORT, () => {
-    console.log(`[API] Servidor rodando na porta ${PORT}`);
-});
-
-// 2. CREATE (Criar)
-app.post('/tasks', async (req, res) => {
-  const { titulo, descricao, disciplina, data_entrega } = req.body;
-
-  // Validação básica dos campos de entrada
-  if (!titulo || typeof titulo !== 'string' || titulo.trim().length === 0) {
-    return res.status(400).json({ error: 'O campo "titulo" é obrigatório.' });
-  }
-  if (!disciplina || typeof disciplina !== 'string' || disciplina.trim().length === 0) {
-    return res.status(400).json({ error: 'O campo "disciplina" é obrigatório.' });
-  }
-  if (titulo.length > 255) {
-    return res.status(400).json({ error: 'O campo "titulo" não pode exceder 255 caracteres.' });
-  }
-  if (disciplina.length > 100) {
-    return res.status(400).json({ error: 'O campo "disciplina" não pode exceder 100 caracteres.' });
-  }
-
-  // Validação opcional da data de entrega (aceita vazio/null)
-  let entrega = null;
-  if (data_entrega) {
-    const d = new Date(data_entrega);
-    if (Number.isNaN(d.getTime())) {
-      return res.status(400).json({ error: 'Formato de "data_entrega" inválido. Use YYYY-MM-DD.' });
-    }
-    entrega = data_entrega;
-  }
-
+// GET /tasks/:id → busca uma tarefa por ID
+app.get('/tasks/:id', async (req, res) => {
   try {
+    const { id } = req.params;
+    const result = await pool.query('SELECT * FROM tarefas WHERE id = $1', [id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Tarefa não encontrada' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('[GET /tasks/:id]', err.message);
+    res.status(500).json({ error: 'Erro ao buscar tarefa' });
+  }
+});
+
+// POST /tasks → cria uma nova tarefa
+app.post('/tasks', async (req, res) => {
+  try {
+    const { titulo, descricao, disciplina, data_entrega } = req.body;
+    if (!titulo || !disciplina) {
+      return res.status(400).json({ error: 'titulo e disciplina são obrigatórios' });
+    }
     const result = await pool.query(
       'INSERT INTO tarefas (titulo, descricao, disciplina, data_entrega) VALUES ($1, $2, $3, $4) RETURNING *',
-      [titulo.trim(), descricao || null, disciplina.trim(), entrega]
+      [titulo, descricao || null, disciplina, data_entrega || null]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[POST /tasks]', err.message);
+    res.status(500).json({ error: 'Erro ao criar tarefa' });
   }
 });
 
-// 3. UPDATE (Atualizar status de conclusão)
+// PUT /tasks/:id → atualiza uma tarefa existente
 app.put('/tasks/:id', async (req, res) => {
-  const { id } = req.params;
-  const { concluida } = req.body;
   try {
+    const { id } = req.params;
+    const { titulo, descricao, disciplina, concluida, data_entrega } = req.body;
     const result = await pool.query(
-      'UPDATE tarefas SET concluida = $1 WHERE id = $2 RETURNING *',
-      [concluida, id]
+      `UPDATE tarefas 
+       SET titulo = COALESCE($1, titulo),
+           descricao = COALESCE($2, descricao),
+           disciplina = COALESCE($3, disciplina),
+           concluida = COALESCE($4, concluida),
+           data_entrega = COALESCE($5, data_entrega)
+       WHERE id = $6 RETURNING *`,
+      [titulo, descricao, disciplina, concluida, data_entrega, id]
     );
-    if (result.rowCount === 0) return res.status(404).json({ error: 'Tarefa não encontrada' });
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Tarefa não encontrada' });
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[PUT /tasks/:id]', err.message);
+    res.status(500).json({ error: 'Erro ao atualizar tarefa' });
   }
 });
 
-// 4. DELETE (Excluir)
+// DELETE /tasks/:id → remove uma tarefa
 app.delete('/tasks/:id', async (req, res) => {
-  const { id } = req.params;
   try {
-    const result = await pool.query('DELETE FROM tarefas WHERE id = $1 RETURNING id', [id]);
-    if (result.rowCount === 0) return res.status(404).json({ error: 'Tarefa não encontrada' });
-    res.json({ deleted: true, id });
+    const { id } = req.params;
+    const result = await pool.query('DELETE FROM tarefas WHERE id = $1 RETURNING *', [id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Tarefa não encontrada' });
+    res.json({ message: 'Tarefa removida com sucesso', tarefa: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[DELETE /tasks/:id]', err.message);
+    res.status(500).json({ error: 'Erro ao remover tarefa' });
   }
 });
 
-// Rota de relatório que calcula quantas tarefas existem, quantas foram concluídas e quantas ainda estão pendentes
-app.get('/report', async (_req, res) => {
+// PATCH /tasks/:id/toggle → alterna o status concluida da tarefa
+app.patch('/tasks/:id/toggle', async (req, res) => {
   try {
-    const tasksRes = await pool.query('SELECT * FROM tarefas');
-    const tasks = tasksRes.rows;
+    const { id } = req.params;
+    const result = await pool.query(
+      'UPDATE tarefas SET concluida = NOT concluida WHERE id = $1 RETURNING *',
+      [id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Tarefa não encontrada' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('[PATCH /tasks/:id/toggle]', err.message);
+    res.status(500).json({ error: 'Erro ao alternar status da tarefa' });
+  }
+});
+
+// ─── Rota de Relatório (simulada localmente, substituída pelo Lambda na AWS) ───
+// GET /report → gera estatísticas das tarefas (roda localmente; na AWS vira Lambda)
+app.get('/report', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM tarefas');
+    const tasks = result.rows;
     const total = tasks.length;
     const concluidas = tasks.filter(t => t.concluida === true).length;
-    res.json({ total, concluidas, pendentes: total - concluidas });
+    const pendentes = total - concluidas;
+    res.json({
+      total,
+      concluidas,
+      pendentes,
+      timestamp: new Date().toISOString()
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[GET /report]', err.message);
+    res.status(500).json({ error: 'Falha ao computar relatório: ' + err.message });
   }
 });
 
-async function bootstrap() {
-  try {
-    await connectDB();
-    app.listen(PORT, () => console.log(`API rodando na porta ${PORT}`));
-  } catch (err) {
-    console.error('Falha ao iniciar backend:', err.message);
-    process.exit(1);
-  }
-}
-bootstrap();
+// ─── Health check ──────────────────────────────────────────────────────────────
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
+
+// ─── Start ─────────────────────────────────────────────────────────────────────
+app.listen(PORT, () => {
+  console.log(`[API] Servidor rodando na porta ${PORT}`);
+});

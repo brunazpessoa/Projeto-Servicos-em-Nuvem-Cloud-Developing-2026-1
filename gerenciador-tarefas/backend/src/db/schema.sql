@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS tarefas (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Dados iniciais para o relatório não virar vazio
+-- Dados iniciais para o relatório não ficar vazio
 INSERT INTO tarefas (titulo, descricao, disciplina, concluida, data_entrega) 
 VALUES 
 ('Projeto de Nuvem', 'Entregar o CRUD com Docker e AWS', 'Serviços em Nuvem', false, '2026-06-01'),

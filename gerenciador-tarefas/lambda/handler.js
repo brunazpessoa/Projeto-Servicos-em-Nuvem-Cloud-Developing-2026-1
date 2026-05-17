@@ -1,21 +1,24 @@
-// Função Lambda que consulta as tarefas do backend e retorna um resumo simples de relatório
+// Função Lambda que consulta as tarefas do backend e retorna um resumo de relatório
+// ATENÇÃO: na AWS, altere BACKEND_URL para a URL pública do seu ALB/ECS ou API Gateway
 import fetch from 'node-fetch';
+
+const BACKEND_URL = process.env.BACKEND_URL || 'http://backend:3000';
 
 export const handler = async (event) => {
     try {
-        // NA AWS: Altere para a URL pública do seu ECS Fargate (ou API Gateway direcionando pro Back) 
-        const response = await fetch('http://backend:3000/tasks'); 
+        const response = await fetch(`${BACKEND_URL}/tasks`);
+        if (!response.ok) throw new Error(`Backend retornou ${response.status}`);
         const tasks = await response.json();
-        
+
         const total = tasks.length;
         const concluidas = tasks.filter(t => t.concluida === true).length;
         const pendentes = total - concluidas;
-        
+
         return {
             statusCode: 200,
             headers: {
                 "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*" // Evita problemas de CORS na nuvem
+                "Access-Control-Allow-Origin": "*"
             },
             body: JSON.stringify({
                 total,
@@ -27,6 +30,7 @@ export const handler = async (event) => {
     } catch (error) {
         return {
             statusCode: 500,
+            headers: { "Access-Control-Allow-Origin": "*" },
             body: JSON.stringify({ error: "Falha ao computar relatório: " + error.message })
         };
     }

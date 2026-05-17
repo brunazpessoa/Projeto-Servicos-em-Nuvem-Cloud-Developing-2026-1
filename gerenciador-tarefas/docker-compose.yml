@@ -12,6 +12,13 @@ services:
       - "5432:5432"
     volumes:
       - database_tasks:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql   # ← inicializa o banco automaticamente
+    # Healthcheck: garante que o Postgres esteja aceitando conexões antes do backend subir
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d tarefas_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   backend:
     build: ./backend
@@ -24,8 +31,11 @@ services:
       - DB_USER=admin
       - DB_PASSWORD=password123
       - DB_NAME=tarefas_db
+      - PORT=3000
+    # Só sobe depois que o banco estiver saudável (healthcheck passou)
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   frontend:
     build: ./frontend
