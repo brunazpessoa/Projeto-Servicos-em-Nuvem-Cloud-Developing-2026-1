@@ -8,11 +8,22 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ─── Middlewares ───────────────────────────────────────────────────────────────
-app.use(cors());
+// CORS explícito: permite qualquer origem (necessário para o browser acessar localhost:3000)
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+app.options('*', cors()); // responde preflight OPTIONS para todas as rotas
 app.use(express.json());
 
-// ─── Conexão com banco ─────────────────────────────────────────────────────────
-await connectDB();
+// ─── Conexão com banco (com retry + tratamento de falha fatal) ─────────────────
+try {
+  await connectDB();
+} catch (err) {
+  console.error('[FATAL] Não foi possível conectar ao banco:', err.message);
+  process.exit(1);
+}
 
 // ─── Rotas de Tarefas ──────────────────────────────────────────────────────────
 
@@ -110,8 +121,7 @@ app.patch('/tasks/:id/toggle', async (req, res) => {
   }
 });
 
-// ─── Rota de Relatório (simulada localmente, substituída pelo Lambda na AWS) ───
-// GET /report → gera estatísticas das tarefas (roda localmente; na AWS vira Lambda)
+// ─── Rota de Relatório (local) — na AWS será substituída pelo Lambda ───────────
 app.get('/report', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM tarefas');
@@ -119,12 +129,7 @@ app.get('/report', async (req, res) => {
     const total = tasks.length;
     const concluidas = tasks.filter(t => t.concluida === true).length;
     const pendentes = total - concluidas;
-    res.json({
-      total,
-      concluidas,
-      pendentes,
-      timestamp: new Date().toISOString()
-    });
+    res.json({ total, concluidas, pendentes, timestamp: new Date().toISOString() });
   } catch (err) {
     console.error('[GET /report]', err.message);
     res.status(500).json({ error: 'Falha ao computar relatório: ' + err.message });
@@ -134,7 +139,7 @@ app.get('/report', async (req, res) => {
 // ─── Health check ──────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
-// ─── Start ─────────────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
+// ─── Start — escuta em 0.0.0.0 para funcionar dentro do container ─────────────
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`[API] Servidor rodando na porta ${PORT}`);
 });
