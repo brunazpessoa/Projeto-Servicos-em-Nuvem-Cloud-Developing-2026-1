@@ -2,7 +2,7 @@
 import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
-import pool, { connectDB } from './pool.js';
+import pool, { connectDB } from './db/pool.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
