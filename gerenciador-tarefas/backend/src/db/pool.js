@@ -12,13 +12,22 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
 });
 
-export async function connectDB() {
-  const client = await pool.connect();
-  try {
-    await client.query('SELECT 1');
-    console.log('[DB] Conectado ao PostgreSQL com sucesso!');
-  } finally {
-    client.release();
+// Tenta conectar com retry — o Postgres pode demorar alguns segundos mesmo após o healthcheck
+export async function connectDB(retries = 10, delayMs = 2000) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const client = await pool.connect();
+      await client.query('SELECT 1');
+      client.release();
+      console.log('[DB] Conectado ao PostgreSQL com sucesso!');
+      return;
+    } catch (err) {
+      console.warn(`[DB] Tentativa ${attempt}/${retries} falhou: ${err.message}`);
+      if (attempt === retries) {
+        throw new Error(`[DB] Não foi possível conectar ao banco após ${retries} tentativas.`);
+      }
+      await new Promise(res => setTimeout(res, delayMs));
+    }
   }
 }
 
