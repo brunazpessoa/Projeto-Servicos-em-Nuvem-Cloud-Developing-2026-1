@@ -9,11 +9,11 @@ services:
       POSTGRES_PASSWORD: password123
       POSTGRES_DB: tarefas_db
     ports:
-      - "5432:5432"
+      - "5433:5432"  # ← Mudamos para 5433 para evitar o conflito com o Postgres do seu Windows
     volumes:
       - database_tasks:/var/lib/postgresql/data
-      - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql   # ← inicializa o banco automaticamente
-    # Healthcheck: garante que o Postgres esteja aceitando conexões antes do backend subir
+      # CAMINHO CORRIGIDO: Aponta exatamente para onde o schema real está guardado
+      - ./backend/src/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql   
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U admin -d tarefas_db"]
       interval: 5s
@@ -32,7 +32,6 @@ services:
       - DB_PASSWORD=password123
       - DB_NAME=tarefas_db
       - PORT=3000
-    # Só sobe depois que o banco estiver saudável (healthcheck passou)
     depends_on:
       db:
         condition: service_healthy
