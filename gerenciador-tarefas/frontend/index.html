@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Gerenciador de Tarefas Acadêmicas</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #f4f6f9; color: #333; max-width: 800px; margin: 40px auto; padding: 20px; }
+    h1, h2 { color: #2c3e50; }
+    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+    input, textarea { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
+    button { background: #3498db; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    button:hover { background: #2980b9; }
+    .btn-danger { background: #e74c3c; }
+    .btn-danger:hover { background: #c0392b; }
+    .task-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee; }
+    .task-item.done span { text-decoration: line-through; color: #95a5a6; }
+    .stats-box { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+    .stat-card { background: #eef2f7; padding: 15px; border-radius: 6px; text-align: center; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <h1>📝 Gerenciador de Tarefas</h1>
+  <p>Aplicação simples para criar, listar e gerenciar tarefas acadêmicas direto do navegador.</p>
+  
+  <div class="card">
+    <h2>Nova Tarefa</h2>
+    <div class="form-group">
+      <label>Título</label>
+      <input type="text" id="task-title" placeholder="Ex: Estudar para a prova de AWS">
+    </div>
+    <div class="form-group">
+      <label>Disciplina</label>
+      <input type="text" id="task-subject" placeholder="Ex: Serviços em Nuvem">
+    </div>
+    <div class="form-group">
+      <label>Descrição</label>
+      <textarea id="task-desc" placeholder="Detalhes da entrega..."></textarea>
+    </div>
+    <button onclick="createTask()">Adicionar Tarefa</button>
+  </div>
+
+  <div class="card">
+    <h2>Minhas Atividades</h2>
+    <div id="tasks-container">Carregando tarefas...</div>
+  </div>
+
+  <div class="card">
+    <h2>📊 Relatório Geral (AWS Lambda)</h2>
+    <button onclick="loadReport()">Atualizar Estatísticas</button>
+    <div id="report-container" class="stats-box">
+      <p>Clique em atualizar para processar dados via Lambda.</p>
+    </div>
+  </div>
+
+<script>
+  // 🌏 NA AWS: Altere ambas as URLs abaixo para o Endpoint único gerado pelo seu Amazon API Gateway 
+  const API_URL = "http://localhost:3000/tasks";
+  const REPORT_URL = "http://localhost:3000/report"; 
+
+  async function loadTasks() {
+    try {
+      const res = await fetch(API_URL);
+      const tasks = await res.json();
+      const container = document.getElementById('tasks-container');
+      
+      if(tasks.length === 0) {
+        container.innerHTML = "<p>Nenhuma tarefa pendente!</p>";
+        return;
+      }
+
+      container.innerHTML = tasks.map(t => `
+        <div class="task-item ${t.concluida ? 'done' : ''}">
+          <div>
+            <strong>${t.titulo}</strong> <small>(${t.disciplina})</small>
+            <p style="margin:4px 0 0; font-size:0.9rem; color:#666">${t.descricao || ''}</p>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <input type="checkbox" ${t.concluida ? 'checked' : ''} onclick="toggleTask(${t.id}, ${t.concluida})">
+            <button class="btn-danger" onclick="deleteTask(${t.id})">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    } catch (err) {
+      document.getElementById('tasks-container').innerHTML = "<p>Erro ao carregar tarefas do backend.</p>";
+    }
+  }
+
+  async function createTask() {
+    const titulo = document.getElementById('task-title').value.trim();
+    const disciplina = document.getElementById('task-subject').value.trim();
+    const descricao = document.getElementById('task-desc').value.trim();
+
+    if(!titulo || !disciplina) { alert('Título e Disciplina são obrigatórios!'); return; }
+
+    await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ titulo, disciplina, descricao })
+    });
+
+    document.getElementById('task-title').value = '';
+    document.getElementById('task-subject').value = '';
+    document.getElementById('task-desc').value = '';
+    loadTasks();
+  }
+
+  async function toggleTask(id, currentStatus) {
+    await fetch(`${API_URL}/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ concluida: !currentStatus })
+    });
+    loadTasks();
+  }
+
+  async function deleteTask(id) {
+    if(!confirm('Deseja excluir esta tarefa?')) return;
+    await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+    loadTasks();
+  }
+
+  async function loadReport() {
+    const container = document.getElementById('report-container');
+    container.innerHTML = "<p>Processando dados na Lambda...</p>";
+    try {
+      const res = await fetch(REPORT_URL);
+      const data = await res.json();
+      container.innerHTML = `
+        <div class="stat-card">Total: ${data.total}</div>
+        <div class="stat-card" style="color: green">Concluídas: ${data.concluidas}</div>
+        <div class="stat-card" style="color: orange">Pendentes: ${data.pendentes}</div>
+      `;
+    } catch (err) {
+      container.innerHTML = "<p>Erro ao obter dados do Lambda /report.</p>";
+    }
+  }
+
+  // Inicialização automática
+  loadTasks();
+</script>
+</body>
+</html>
