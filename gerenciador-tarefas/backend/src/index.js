@@ -8,6 +8,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+app.use('/tasks', taskRoutes);
 
 // 1. READ ALL (Listar)
 app.get('/tasks', async (_req, res) => {
@@ -19,13 +20,64 @@ app.get('/tasks', async (_req, res) => {
   }
 });
 
+app.get('/report', async (req, res) => {
+    try {
+        // A Lambda consome a própria API via HTTP para gerar as estatísticas
+        const response = await fetch(`http://localhost:${PORT}/tasks`);
+        const tasks = await response.json();
+        
+        const total = tasks.length;
+        const concluidas = tasks.filter(t => t.concluida || t.status === 'concluida').length;
+        const pendentes = total - concluidas;
+
+        res.json({
+            totalTarefas: total,
+            tarefasConcluidas: concluidas,
+            tarefasPendentes: pendentes,
+            emuladoPor: "AWS Lambda Function",
+            atualizadoEm: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(500).json({ error: "Erro ao emular cálculo da Lambda" });
+    }
+});
+
+app.listen(PORT, () => {
+    console.log(`[API] Servidor rodando na porta ${PORT}`);
+});
+
 // 2. CREATE (Criar)
 app.post('/tasks', async (req, res) => {
   const { titulo, descricao, disciplina, data_entrega } = req.body;
+
+  // Validação básica dos campos de entrada
+  if (!titulo || typeof titulo !== 'string' || titulo.trim().length === 0) {
+    return res.status(400).json({ error: 'O campo "titulo" é obrigatório.' });
+  }
+  if (!disciplina || typeof disciplina !== 'string' || disciplina.trim().length === 0) {
+    return res.status(400).json({ error: 'O campo "disciplina" é obrigatório.' });
+  }
+  if (titulo.length > 255) {
+    return res.status(400).json({ error: 'O campo "titulo" não pode exceder 255 caracteres.' });
+  }
+  if (disciplina.length > 100) {
+    return res.status(400).json({ error: 'O campo "disciplina" não pode exceder 100 caracteres.' });
+  }
+
+  // Validação opcional da data de entrega (aceita vazio/null)
+  let entrega = null;
+  if (data_entrega) {
+    const d = new Date(data_entrega);
+    if (Number.isNaN(d.getTime())) {
+      return res.status(400).json({ error: 'Formato de "data_entrega" inválido. Use YYYY-MM-DD.' });
+    }
+    entrega = data_entrega;
+  }
+
   try {
     const result = await pool.query(
       'INSERT INTO tarefas (titulo, descricao, disciplina, data_entrega) VALUES ($1, $2, $3, $4) RETURNING *',
-      [titulo, descricao, disciplina, data_entrega || null]
+      [titulo.trim(), descricao || null, disciplina.trim(), entrega]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
