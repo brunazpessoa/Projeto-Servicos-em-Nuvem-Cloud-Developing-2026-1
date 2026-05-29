@@ -22,4 +22,8 @@ Dessa forma, o projeto demonstra a utilização conjunta de diferentes serviços
 <img width="734" height="396" alt="Captura de Tela 2026-05-29 às 18 20 00" src="https://github.com/user-attachments/assets/f22ecbde-0d67-4f34-b256-84544c2397a5" />
 <img width="1600" height="803" alt="WhatsApp Image 2026-05-29 at 18 48 05" src="https://github.com/user-attachments/assets/dadc7f3d-4fb1-40d6-8b12-27661517bdad" />
 
+Versão Inicial da Arquitetura 
+<img width="1845" height="970" alt="IMG_1180" src="https://github.com/user-attachments/assets/0f76d3d0-29e2-4f39-80af-1e2fd46e83ca" />
+
+
 
