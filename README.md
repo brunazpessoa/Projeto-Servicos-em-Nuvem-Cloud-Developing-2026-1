@@ -10,24 +10,15 @@
 1. 10435657 - Mariana Chiorboli - Lambda/Documentação: desenvolver a lambda, produzir README, PDF técnico, vídeo demonstrativo e organizar as evidências do projeto.
 
 ## 1. Visão geral
-<!-- Descreva rapidamente o domínio escolhido, por que foi selecionado e o que o CRUD faz. -->
 
-## 2. Arquitetura
+O projeto desenvolvido consiste em um sistema de gerenciamento de tarefas que permite aos usuários organizar atividades por meio das operações de cadastro, consulta, atualização e exclusão de registros.
 
-![Diagrama](docs/arquitetura.png)
+O principal objetivo foi aplicar, na prática, os conhecimentos adquiridos na disciplina de Cloud Developing, explorando a utilização de serviços da AWS para construção de uma aplicação moderna hospedada em nuvem.
 
-| Camada | Serviço | Descrição |
-|--------|---------|-----------|
-| Back-end | ECS Fargate (ou EC2 + Docker) | API REST Node/Spring/… |
-| Front-end | ECS Fargate (ou EC2 + Docker) | Node/Spring/… |
-| Banco   | Amazon RDS              | PostgreSQL / MySQL em subnet privada |
-| Gateway | Amazon API Gateway      | Rotas CRUD → ECS · `/report` → Lambda |
-| Função  | AWS Lambda              | Consome a API, gera estatísticas JSON |
+A solução integra um front-end web, uma API REST responsável pelas regras de negócio, um banco de dados PostgreSQL hospedado no Amazon RDS e uma função AWS Lambda para geração de relatórios estatísticos. Toda a aplicação foi containerizada utilizando Docker e implantada no Amazon ECS Fargate, sendo acessada através do Amazon API Gateway.
 
+Dessa forma, o projeto demonstra a utilização conjunta de diferentes serviços de computação em nuvem para implementação de uma arquitetura escalável, segura e totalmente funcional.
 
-## 3. Como rodar localmente
+<img width="734" height="396" alt="Captura de Tela 2026-05-29 às 18 20 00" src="https://github.com/user-attachments/assets/f22ecbde-0d67-4f34-b256-84544c2397a5" />
+<img width="1845" height="970" alt="IMG_1180" src="https://github.com/user-attachments/assets/48d81b00-9d5a-4903-bd14-f35c9c9bd0b5" />
 
-```bash
-cp .env.example .env         # configure variáveis
-docker compose up --build
-# API em http://localhost:3000
