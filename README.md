@@ -20,5 +20,6 @@ A solução integra um front-end web, uma API REST responsável pelas regras de 
 Dessa forma, o projeto demonstra a utilização conjunta de diferentes serviços de computação em nuvem para implementação de uma arquitetura escalável, segura e totalmente funcional.
 
 <img width="734" height="396" alt="Captura de Tela 2026-05-29 às 18 20 00" src="https://github.com/user-attachments/assets/f22ecbde-0d67-4f34-b256-84544c2397a5" />
-<img width="1845" height="970" alt="IMG_1180" src="https://github.com/user-attachments/assets/48d81b00-9d5a-4903-bd14-f35c9c9bd0b5" />
+<img width="1600" height="803" alt="WhatsApp Image 2026-05-29 at 18 48 05" src="https://github.com/user-attachments/assets/dadc7f3d-4fb1-40d6-8b12-27661517bdad" />
+
 
