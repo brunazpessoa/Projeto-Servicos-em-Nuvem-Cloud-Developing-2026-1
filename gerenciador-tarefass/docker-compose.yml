@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: tarefas-banco
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: tarefas_db
+    ports:
+      - "5433:5432"  # ← Mudamos para 5433 para evitar o conflito com o Postgres do seu Windows
+    volumes:
+      - database_tasks:/var/lib/postgresql/data
+      # CAMINHO CORRIGIDO: Aponta exatamente para onde o schema real está guardado
+      - ./backend/src/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql   
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d tarefas_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: tarefas-api
+    ports:
+      - "3000:3000"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=admin
+      - DB_PASSWORD=password123
+      - DB_NAME=tarefas_db
+      - PORT=3000
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    container_name: tarefas-tela
+    ports:
+      - "8080:8080"
+    depends_on:
+      - backend
+
+volumes:
+  database_tasks:
