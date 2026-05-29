@@ -1,0 +1,7 @@
+{
+  "name": "tarefas-lambda",
+  "version": "1.0.0",
+  "description": "Lambda de relatório - consome a API via API Gateway e devolve estatísticas",
+  "type": "module",
+  "main": "handler.js"
+}
