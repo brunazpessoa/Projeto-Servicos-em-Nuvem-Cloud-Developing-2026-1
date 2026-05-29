@@ -5,7 +5,7 @@
 **Grupo**:
 1. 10417079 - Bruna Zakaib Pessoa- Backend/API: desenvolver a API REST em Spring Boot com operações CRUD, regras de negócio e integração com o banco PostgreSQL.
 1. 10410280 - André Contarelli Lima - Banco de Dados/RDS: criar a modelagem SQL, configurar o PostgreSQL no Amazon RDS e garantir a conexão com o backend.
-1. RA - nome - Front-end: adaptar o HTML/CSS/JS do projeto para consumir as rotas da API Gateway e implementar as telas do CRUD.
+1. 10443465 - Yasmin Mendes de Souza - Front-end: adaptar o HTML/CSS/JS do projeto para consumir as rotas da API Gateway e implementar as telas do CRUD.
 1. RA - nome - AWS/Docker: containerizar frontend e backend com Docker e realizar o deploy no ECS Fargate, configurando também o API Gateway.
 1. RA - nome - Lambda/Documentação: desenvolver a lambda, produzir README, PDF técnico, vídeo demonstrativo e organizar as evidências do projeto.
 
